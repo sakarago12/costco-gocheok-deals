@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>코스트코 고척점 이번 주 할인</title>
+<meta name="description" content="코스트코 고척점에서 확인할 이번 주 할인 상품 목록 (매일 자동 갱신)">
+<meta name="theme-color" content="#1f3b73">
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --text: #16181d; --sub: #5d6470; --line: #e3e6eb;
+    --accent: #1f3b73; --accent-soft: #e6ecf7; --sale: #d0202f; --warn: #b45309; --warn-soft: #fff4e5;
+    --new: #0f7b4b; --new-soft: #e3f5ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111316; --card: #1b1e23; --text: #eceef1; --sub: #9aa1ac; --line: #2b3038;
+      --accent: #8fb0ef; --accent-soft: #23304a; --sale: #ff6b74; --warn: #f5b25c; --warn-soft: #3a2a14;
+      --new: #5fd39b; --new-soft: #163327;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 48px; }
+  header { padding: 20px 0 8px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .updated { color: var(--sub); font-size: 13px; }
+  .store { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 12px 0; font-size: 14px; }
+  .store b { font-weight: 600; }
+  .store .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .store .closed { color: var(--warn); font-weight: 600; }
+  .store a { color: var(--accent); }
+  .note { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 9px 12px; font-size: 13px; margin-bottom: 12px; }
+  .bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0 6px; }
+  .search { display: flex; gap: 8px; }
+  input[type=search], select { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; min-width: 0; }
+  input[type=search] { flex: 1; }
+  select { flex: none; }
+  .tabs, .chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar, .chips::-webkit-scrollbar { display: none; }
+  .tab, .chip { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .tab[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { .tab[aria-pressed=true] { color: #111316; } }
+  .chip[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .count { color: var(--sub); font-size: 13px; margin: 6px 2px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li a { display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px; color: inherit; text-decoration: none; }
+  .thumb { flex: none; width: 84px; height: 84px; border-radius: 10px; background: #fff; object-fit: contain; }
+  .info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .name { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+  .now { font-size: 17px; font-weight: 700; }
+  .was { color: var(--sub); text-decoration: line-through; font-size: 13px; }
+  .off { color: var(--sale); font-weight: 700; font-size: 14px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--sub); font-size: 12px; }
+  .badge { border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+  .b-new { background: var(--new-soft); color: var(--new); }
+  .b-end { background: var(--warn-soft); color: var(--warn); }
+  .b-soon { background: var(--accent-soft); color: var(--accent); }
+  .empty { text-align: center; color: var(--sub); padding: 40px 0; }
+  .more { display: block; width: 100%; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; cursor: pointer; }
+  footer { color: var(--sub); font-size: 12px; margin-top: 24px; }
+  footer a { color: var(--sub); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>코스트코 고척점 이번 주 할인</h1>
+    <div class="updated" id="updated">불러오는 중…</div>
+  </header>
+
+  <section class="store" id="store" hidden></section>
+
+  <div class="note">코스트코 공식 사이트의 할인 목록에서 온라인 전용 상품을 뺀 목록이에요. 고척점 재고나 가격은 다를 수 있어요.</div>
+
+  <div class="bar">
+    <div class="search">
+      <input type="search" id="q" placeholder="상품 검색 (예: 커클랜드, 세제)" autocomplete="off">
+      <select id="sort" aria-label="정렬">
+        <option value="off">할인액 큰 순</option>
+        <option value="pct">할인율 높은 순</option>
+        <option value="end">마감 임박 순</option>
+        <option value="price">가격 낮은 순</option>
+      </select>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab" data-v="now" aria-pressed="true">진행 중</button>
+      <button class="tab" data-v="new" aria-pressed="false">이번 주 시작</button>
+      <button class="tab" data-v="ending" aria-pressed="false">곧 종료 (3일 이내)</button>
+      <button class="tab" data-v="soon" aria-pressed="false">시작 예정</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="count" id="count"></div>
+  <ul id="list"></ul>
+  <button class="more" id="more" hidden>더 보기</button>
+  <div class="empty" id="empty" hidden>조건에 맞는 상품이 없어요.</div>
+
+  <footer>
+    데이터: 코스트코 코리아 웹사이트의 ‘스페셜 할인’ 목록을 매일 자동으로 받아 정리합니다. 상품을 누르면 코스트코 상품 페이지로 이동해요.
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const won = n => n.toLocaleString('ko-KR') + '원';
+const DOW = ['일','월','화','수','목','금','토'];
+const kstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const addDays = (d, n) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const md = d => { const t = new Date(d + 'T00:00:00Z'); return `${t.getUTCMonth() + 1}/${t.getUTCDate()}(${DOW[t.getUTCDay()]})`; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const PAGE = 60;
+let data, state = { tab: 'now', cat: '전체', q: '', sort: 'off', shown: PAGE };
+const today = kstToday();
+const dow = new Date(today + 'T00:00:00Z').getUTCDay();
+const monday = addDays(today, -((dow + 6) % 7));
+
+function load() {
+  try { const s = JSON.parse(localStorage.getItem('gocheok-state') || '{}'); if (s.sort) state.sort = s.sort; } catch {}
+  $('#sort').value = state.sort;
+  fetch('data.json', { cache: 'no-cache' }).then(r => r.json()).then(d => { data = d; init(); })
+    .catch(() => { $('#updated').textContent = '데이터를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.'; });
+}
+
+function init() {
+  const u = new Date(data.updated);
+  $('#updated').textContent = `${u.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' })} 기준 · 오늘 ${md(today)}`;
+  renderStore(data.store);
+  const cats = {};
+  for (const it of data.items) cats[it.cat] = (cats[it.cat] || 0) + 1;
+  const names = Object.keys(cats).sort((a, b) => (a === '기타') - (b === '기타') || cats[b] - cats[a]);
+  $('#chips').innerHTML = ['전체', ...names].map(c => `<button class="chip" data-v="${esc(c)}" aria-pressed="${c === state.cat}">${esc(c)}</button>`).join('');
+  render();
+}
+
+function renderStore(s) {
+  if (!s) return;
+  const next = (s.closedDays || []).find(d => d >= today);
+  const closedToday = next === today;
+  $('#store').hidden = false;
+  $('#store').innerHTML = `
+    <div class="row"><b>${esc(s.name)}</b><span>${esc(s.hours)}</span></div>
+    <div class="row">${closedToday ? '<span class="closed">오늘은 의무 휴무일이에요</span>' : next ? `다음 휴무일 <span class="closed">${md(next)}</span>` : ''}</div>
+    <div class="row"><a href="https://map.naver.com/p/search/${encodeURIComponent('코스트코 고척점')}" target="_blank" rel="noopener">${esc(s.address)}</a></div>`;
+}
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  const end3 = addDays(today, 3);
+  let list = data.items.filter(it => {
+    const active = it.start <= today && today <= it.end;
+    if (state.tab === 'now' && !active) return false;
+    if (state.tab === 'new' && !(active && it.start >= monday)) return false;
+    if (state.tab === 'ending' && !(active && it.end <= end3)) return false;
+    if (state.tab === 'soon' && !(it.start > today)) return false;
+    if (state.cat !== '전체' && it.cat !== state.cat) return false;
+    if (q && !(`${it.name} ${it.en}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const by = {
+    off: (a, b) => b.off - a.off,
+    pct: (a, b) => b.pct - a.pct || b.off - a.off,
+    end: (a, b) => a.end.localeCompare(b.end) || b.off - a.off,
+    price: (a, b) => a.price - b.price,
+  }[state.sort];
+  return list.sort(by);
+}
+
+function card(it) {
+  const active = it.start <= today && today <= it.end;
+  const badges = [];
+  if (it.start > today) badges.push(`<span class="badge b-soon">${md(it.start)} 시작</span>`);
+  else if (it.start >= monday) badges.push('<span class="badge b-new">이번 주 시작</span>');
+  if (active && it.end <= addDays(today, 3)) badges.push(`<span class="badge b-end">${it.end === today ? '오늘 종료' : '곧 종료'}</span>`);
+  return `<li><a href="${esc(it.url)}" target="_blank" rel="noopener">
+    <img class="thumb" src="${esc(it.img)}" alt="" loading="lazy" decoding="async">
+    <div class="info">
+      <div class="name">${esc(it.name)}</div>
+      <div class="price"><span class="now">${won(it.price)}</span><span class="was">${won(it.base)}</span></div>
+      <div class="off">-${won(it.off)} (${it.pct}%)</div>
+      <div class="meta">${badges.join('')}<span>${md(it.start)} ~ ${md(it.end)}</span><span>· ${esc(it.cat)}</span></div>
+    </div></a></li>`;
+}
+
+function render() {
+  const list = filtered();
+  $('#count').textContent = `${list.length.toLocaleString()}개 상품`;
+  $('#list').innerHTML = list.slice(0, state.shown).map(card).join('');
+  $('#more').hidden = list.length <= state.shown;
+  $('#more').textContent = `더 보기 (${(list.length - state.shown).toLocaleString()}개 남음)`;
+  $('#empty').hidden = list.length > 0;
+}
+
+function reset() { state.shown = PAGE; render(); }
+
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  state.tab = b.dataset.v;
+  for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-pressed', t === b);
+  if (state.tab === 'soon' && state.sort === 'end') state.sort = 'off', $('#sort').value = 'off';
+  reset();
+});
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  state.cat = b.dataset.v;
+  for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', c === b);
+  reset();
+});
+let qt; $('#q').addEventListener('input', e => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value; reset(); }, 150); });
+$('#sort').addEventListener('change', e => {
+  state.sort = e.target.value;
+  try { localStorage.setItem('gocheok-state', JSON.stringify({ sort: state.sort })); } catch {}
+  reset();
+});
+$('#more').addEventListener('click', () => { state.shown += PAGE; render(); });
+new IntersectionObserver(es => { if (es[0].isIntersecting && !$('#more').hidden) $('#more').click(); }, { rootMargin: '400px' }).observe($('#more'));
+
+load();
+</script>
+</body>
+</html>
