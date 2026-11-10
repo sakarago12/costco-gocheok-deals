@@ -20,6 +20,7 @@
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif; }
@@ -46,7 +47,42 @@
   .chip[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .count { color: var(--sub); font-size: 13px; margin: 6px 2px; }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  li a { display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px; color: inherit; text-decoration: none; }
+  li.item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  li.item > a { display: flex; gap: 12px; padding: 10px 10px 6px; color: inherit; text-decoration: none; }
+  .locrow { padding: 0 10px 10px 106px; }
+  .loc { font: inherit; font-size: 12px; cursor: pointer; border: 1px dashed var(--line); background: transparent; color: var(--sub); border-radius: 8px; padding: 3px 9px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .loc.set { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  dialog { border: none; border-radius: 16px; background: var(--card); color: var(--text); width: min(92vw, 420px); padding: 18px; }
+  dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .dlg-title { font-weight: 700; font-size: 16px; }
+  .dlg-name { color: var(--sub); font-size: 13px; margin: 4px 0 12px; }
+  .field { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .recent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .recent:empty { display: none; }
+  .dlg-btns { display: flex; gap: 8px; margin-top: 16px; }
+  .dlg-btns .grow { flex: 1; }
+  .btn { font: inherit; font-size: 14px; border-radius: 10px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #111316; } }
+  .btn.danger { color: var(--sale); }
+  .mapsec { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .mapsec h2 { font-size: 16px; margin: 0 0 4px; }
+  .hint { color: var(--sub); font-size: 13px; margin: 0 0 10px; }
+  .zones li, .mini li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .zones { gap: 0; }
+  .zones b { flex: none; max-width: 45%; }
+  .zones span { flex: 1; color: var(--sub); min-width: 0; }
+  .x { flex: none; border: none; background: transparent; color: var(--sub); font-size: 18px; cursor: pointer; padding: 0 4px; }
+  .zoneform { display: flex; gap: 6px; margin-top: 10px; }
+  .zoneform input { flex: 1; min-width: 0; }
+  .grp { margin-top: 12px; }
+  .grp-h { font-weight: 700; color: var(--accent); }
+  .grp-h small { color: var(--sub); font-weight: 400; margin-left: 4px; }
+  .mini { gap: 0; }
+  .mini li { font-size: 14px; }
+  .mini .nm { flex: 1; min-width: 0; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini .pr { flex: none; color: var(--sale); font-size: 12px; font-weight: 600; }
+  .mini .loc { flex: none; }
   .thumb { flex: none; width: 84px; height: 84px; border-radius: 10px; background: #fff; object-fit: contain; }
   .info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
   .name { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -84,6 +120,7 @@
         <option value="pct">할인율 높은 순</option>
         <option value="end">마감 임박 순</option>
         <option value="price">가격 낮은 순</option>
+        <option value="loc">📍 위치 순</option>
       </select>
     </div>
     <div class="tabs" id="tabs">
@@ -91,6 +128,7 @@
       <button class="tab" data-v="new" aria-pressed="false">이번 주 시작</button>
       <button class="tab" data-v="ending" aria-pressed="false">곧 종료 (3일 이내)</button>
       <button class="tab" data-v="soon" aria-pressed="false">시작 예정</button>
+      <button class="tab" data-v="map" aria-pressed="false" id="maptab">📍 내 지도</button>
     </div>
     <div class="chips" id="chips"></div>
   </div>
@@ -99,9 +137,26 @@
   <ul id="list"></ul>
   <button class="more" id="more" hidden>더 보기</button>
   <div class="empty" id="empty" hidden>조건에 맞는 상품이 없어요.</div>
+  <div id="map" hidden></div>
+
+  <dialog id="locdlg">
+    <form id="locform">
+      <div class="dlg-title">진열 위치 메모</div>
+      <div class="dlg-name" id="locname"></div>
+      <input class="field" id="locinput" list="loclist" maxlength="40" autocomplete="off" placeholder="예: 12번 통로, 냉동 코너, 입구 왼쪽">
+      <datalist id="loclist"></datalist>
+      <div class="recent" id="recent"></div>
+      <div class="dlg-btns">
+        <button type="button" class="btn danger" id="locdel">지우기</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" id="loccancel">취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </dialog>
 
   <footer>
-    데이터: 코스트코 코리아 웹사이트의 ‘스페셜 할인’ 목록을 매일 자동으로 받아 정리합니다. 상품을 누르면 코스트코 상품 페이지로 이동해요.
+    데이터: 코스트코 코리아 웹사이트의 ‘스페셜 할인’ 목록을 매일 자동으로 받아 정리합니다. 상품을 누르면 코스트코 상품 페이지로 이동해요. 📍 위치 메모는 이 기기의 브라우저에만 저장돼요.
   </footer>
 </div>
 
@@ -120,7 +175,146 @@ const today = kstToday();
 const dow = new Date(today + 'T00:00:00Z').getUTCDay();
 const monday = addDays(today, -((dow + 6) % 7));
 
+// ── 📍 내 위치 메모 (이 기기의 localStorage에 저장) ──
+const MAP_KEY = 'gocheok-map';
+let mine = { items: {}, zones: [] };
+let byCode = new Map();
+const natural = (a, b) => a.localeCompare(b, 'ko', { numeric: true });
+const locOf = code => (mine.items[code] && mine.items[code].loc) || '';
+function loadMine() {
+  try {
+    const m = JSON.parse(localStorage.getItem(MAP_KEY) || 'null');
+    if (m && typeof m === 'object') mine = { items: m.items && typeof m.items === 'object' ? m.items : {}, zones: Array.isArray(m.zones) ? m.zones : [] };
+  } catch {}
+}
+function saveMine() {
+  try { localStorage.setItem(MAP_KEY, JSON.stringify(mine)); }
+  catch { alert('이 브라우저에서는 메모를 저장할 수 없어요. 사생활 보호(시크릿) 모드인지 확인해 주세요.'); }
+  updateMapTab();
+}
+function updateMapTab() {
+  const n = Object.keys(mine.items).length;
+  $('#maptab').textContent = n ? `📍 내 지도 (${n})` : '📍 내 지도';
+}
+function knownLocs() {
+  const cnt = {};
+  for (const v of Object.values(mine.items)) if (v.loc) cnt[v.loc] = (cnt[v.loc] || 0) + 1;
+  for (const z of mine.zones) if (z.loc) cnt[z.loc] = (cnt[z.loc] || 0) + 1;
+  return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || natural(a, b));
+}
+
+let editing = null;
+function openLoc(code) {
+  const it = byCode.get(code);
+  editing = { code, name: (it && it.name) || (mine.items[code] && mine.items[code].name) || code };
+  $('#locname').textContent = editing.name;
+  $('#locinput').value = locOf(code);
+  const locs = knownLocs();
+  $('#loclist').innerHTML = locs.map(l => `<option value="${esc(l)}">`).join('');
+  $('#recent').innerHTML = locs.slice(0, 10).map(l => `<button type="button" class="chip" data-v="${esc(l)}">${esc(l)}</button>`).join('');
+  $('#locdel').hidden = !locOf(code);
+  $('#locdlg').showModal();
+  $('#locinput').focus();
+}
+function closeLoc() { editing = null; $('#locdlg').close(); }
+function setLoc(v) {
+  if (!editing) return;
+  v = v.trim().slice(0, 40);
+  if (v) mine.items[editing.code] = { loc: v, name: editing.name, t: Date.now() };
+  else delete mine.items[editing.code];
+  saveMine();
+  closeLoc();
+  render();
+}
+$('#locform').addEventListener('submit', e => { e.preventDefault(); setLoc($('#locinput').value); });
+$('#locdel').addEventListener('click', () => setLoc(''));
+$('#loccancel').addEventListener('click', closeLoc);
+$('#recent').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { $('#locinput').value = b.dataset.v; $('#locinput').focus(); } });
+document.addEventListener('click', e => { const b = e.target.closest('.loc[data-code]'); if (b) { e.preventDefault(); openLoc(b.dataset.code); } });
+
+function renderMap() {
+  const q = state.q.trim().toLowerCase();
+  const zones = mine.zones.filter(z => !q || `${z.name} ${z.loc}`.toLowerCase().includes(q));
+  const groups = {};
+  for (const [code, v] of Object.entries(mine.items)) {
+    const it = byCode.get(code);
+    const name = (it && it.name) || v.name;
+    if (q && !`${name} ${v.loc}`.toLowerCase().includes(q)) continue;
+    (groups[v.loc] = groups[v.loc] || []).push({ code, name, it });
+  }
+  const locs = Object.keys(groups).sort(natural);
+  const total = locs.reduce((s, l) => s + groups[l].length, 0);
+  const onSale = it => it && it.start <= today && today <= it.end;
+  const row = x => `<li>
+      ${x.it ? `<a class="nm" href="${esc(x.it.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>` : `<span class="nm">${esc(x.name)}</span>`}
+      ${onSale(x.it) ? `<span class="pr">할인 중 ${won(x.it.price)}</span>` : ''}
+      <button class="loc set" data-code="${esc(x.code)}" aria-label="위치 수정">수정</button></li>`;
+  $('#map').innerHTML = `
+    <section class="mapsec">
+      <h2>구역 메모</h2>
+      <p class="hint">큰 구역은 잘 안 바뀌어요. 매장에서 본 대로 적어 두면 다음 장보기 때 참고하기 좋아요.</p>
+      <ul class="zones">${zones.map(z => `<li><b>${esc(z.name)}</b><span>${esc(z.loc)}</span><button class="x" data-zdel="${esc(z.name)}" aria-label="${esc(z.name)} 삭제">×</button></li>`).join('')}</ul>
+      <form class="zoneform" id="zoneform">
+        <input class="field" name="name" maxlength="20" placeholder="구역 (예: 냉동식품)" required>
+        <input class="field" name="loc" maxlength="40" placeholder="위치 (예: 뒤쪽 오른쪽)" required>
+        <button class="btn primary">추가</button>
+      </form>
+    </section>
+    <section class="mapsec">
+      <h2>상품 위치 <small class="hint">${total}개</small></h2>
+      ${total ? '<p class="hint">위치 이름 순서로 묶었어요. 통로 번호로 적으면 매장을 도는 순서대로 볼 수 있어요.</p>' : `<p class="hint">${q ? '검색어에 맞는 메모가 없어요.' : '아직 적어 둔 위치가 없어요. 할인 목록의 상품 카드에서 <b>📍 위치 메모</b>를 눌러 추가해 보세요.'}</p>`}
+      ${locs.map(l => `<div class="grp"><div class="grp-h">📍 ${esc(l)}<small>${groups[l].length}개</small></div>
+        <ul class="mini">${groups[l].sort((a, b) => onSale(b.it) - onSale(a.it) || natural(a.name, b.name)).map(row).join('')}</ul></div>`).join('')}
+    </section>
+    <section class="mapsec">
+      <h2>백업</h2>
+      <p class="hint">메모는 이 기기의 브라우저에만 저장돼요. 휴대폰을 바꾸거나 다른 기기에서도 보려면 파일로 내보낸 뒤 그 기기에서 가져오세요.</p>
+      <div class="dlg-btns" style="margin-top:0">
+        <button class="btn" id="exp">내보내기</button>
+        <label class="btn">가져오기<input type="file" id="imp" accept="application/json,.json" hidden></label>
+      </div>
+    </section>`;
+}
+
+$('#map').addEventListener('submit', e => {
+  if (e.target.id !== 'zoneform') return;
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const name = String(f.get('name')).trim(), loc = String(f.get('loc')).trim();
+  if (!name || !loc) return;
+  mine.zones = mine.zones.filter(z => z.name !== name).concat({ name, loc });
+  mine.zones.sort((a, b) => natural(a.name, b.name));
+  saveMine(); renderMap();
+  $('#zoneform input[name=name]').focus();
+});
+$('#map').addEventListener('click', e => {
+  const z = e.target.closest('[data-zdel]');
+  if (z) { mine.zones = mine.zones.filter(x => x.name !== z.dataset.zdel); saveMine(); renderMap(); return; }
+  if (e.target.closest('#exp')) {
+    const blob = new Blob([JSON.stringify({ app: 'gocheok-map', saved: new Date().toISOString(), ...mine }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `고척점-내지도-${today}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+});
+$('#map').addEventListener('change', e => {
+  if (e.target.id !== 'imp' || !e.target.files[0]) return;
+  e.target.files[0].text().then(t => {
+    const m = JSON.parse(t);
+    if (!m || typeof m.items !== 'object' || !Array.isArray(m.zones)) throw new Error();
+    let n = 0;
+    for (const [code, v] of Object.entries(m.items)) if (v && typeof v.loc === 'string' && v.loc) { mine.items[code] = { loc: v.loc.slice(0, 40), name: String(v.name || code), t: v.t || Date.now() }; n++; }
+    for (const z of m.zones) if (z && z.name && z.loc) mine.zones = mine.zones.filter(x => x.name !== z.name).concat({ name: String(z.name), loc: String(z.loc) });
+    mine.zones.sort((a, b) => natural(a.name, b.name));
+    saveMine(); renderMap();
+    alert(`상품 위치 ${n}개, 구역 ${m.zones.length}개를 가져왔어요.`);
+  }).catch(() => alert('가져올 수 없는 파일이에요. 이 페이지에서 내보낸 파일인지 확인해 주세요.'));
+});
+
 function load() {
+  loadMine();
+  updateMapTab();
   try { const s = JSON.parse(localStorage.getItem('gocheok-state') || '{}'); if (s.sort) state.sort = s.sort; } catch {}
   $('#sort').value = state.sort;
   fetch('data.json', { cache: 'no-cache' }).then(r => r.json()).then(d => { data = d; init(); })
@@ -131,6 +325,7 @@ function init() {
   const u = new Date(data.updated);
   $('#updated').textContent = `${u.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' })} 기준 · 오늘 ${md(today)}`;
   renderStore(data.store);
+  byCode = new Map(data.items.map(it => [it.code, it]));
   const cats = {};
   for (const it of data.items) cats[it.cat] = (cats[it.cat] || 0) + 1;
   const names = Object.keys(cats).sort((a, b) => (a === '기타') - (b === '기타') || cats[b] - cats[a]);
@@ -159,10 +354,11 @@ function filtered() {
     if (state.tab === 'ending' && !(active && it.end <= end3)) return false;
     if (state.tab === 'soon' && !(it.start > today)) return false;
     if (state.cat !== '전체' && it.cat !== state.cat) return false;
-    if (q && !(`${it.name} ${it.en}`.toLowerCase().includes(q))) return false;
+    if (q && !(`${it.name} ${it.en} ${locOf(it.code)}`.toLowerCase().includes(q))) return false;
     return true;
   });
   const by = {
+    loc: (a, b) => { const la = locOf(a.code), lb = locOf(b.code); return (!la - !lb) || natural(la, lb) || b.off - a.off; },
     off: (a, b) => b.off - a.off,
     pct: (a, b) => b.pct - a.pct || b.off - a.off,
     end: (a, b) => a.end.localeCompare(b.end) || b.off - a.off,
@@ -177,17 +373,24 @@ function card(it) {
   if (it.start > today) badges.push(`<span class="badge b-soon">${md(it.start)} 시작</span>`);
   else if (it.start >= monday) badges.push('<span class="badge b-new">이번 주 시작</span>');
   if (active && it.end <= addDays(today, 3)) badges.push(`<span class="badge b-end">${it.end === today ? '오늘 종료' : '곧 종료'}</span>`);
-  return `<li><a href="${esc(it.url)}" target="_blank" rel="noopener">
+  const loc = locOf(it.code);
+  return `<li class="item"><a href="${esc(it.url)}" target="_blank" rel="noopener">
     <img class="thumb" src="${esc(it.img)}" alt="" loading="lazy" decoding="async">
     <div class="info">
       <div class="name">${esc(it.name)}</div>
       <div class="price"><span class="now">${won(it.price)}</span><span class="was">${won(it.base)}</span></div>
       <div class="off">-${won(it.off)} (${it.pct}%)</div>
       <div class="meta">${badges.join('')}<span>${md(it.start)} ~ ${md(it.end)}</span><span>· ${esc(it.cat)}</span></div>
-    </div></a></li>`;
+    </div></a>
+    <div class="locrow"><button class="loc${loc ? ' set' : ''}" data-code="${esc(it.code)}">📍 ${loc ? esc(loc) : '위치 메모'}</button></div></li>`;
 }
 
 function render() {
+  if (!data) return;
+  const isMap = state.tab === 'map';
+  for (const s of ['#chips', '#count', '#list', '#sort']) $(s).hidden = isMap;
+  $('#map').hidden = !isMap;
+  if (isMap) { $('#more').hidden = $('#empty').hidden = true; renderMap(); return; }
   const list = filtered();
   $('#count').textContent = `${list.length.toLocaleString()}개 상품`;
   $('#list').innerHTML = list.slice(0, state.shown).map(card).join('');
