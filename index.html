@@ -49,7 +49,14 @@
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
   li.item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   li.item > a { display: flex; gap: 12px; padding: 10px 10px 6px; color: inherit; text-decoration: none; }
-  .locrow { padding: 0 10px 10px 106px; }
+  .locrow { padding: 0 10px 10px 106px; display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .fav { flex: none; font: inherit; font-size: 12px; cursor: pointer; border: 1px dashed var(--line); background: transparent; color: var(--sub); border-radius: 8px; padding: 3px 9px; }
+  .fav.on { border-style: solid; border-color: #d9a400; background: #fff6d6; color: #8a6400; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { .fav.on { background: #3a3110; color: #f5cf4a; border-color: #b38a00; } }
+  .kw { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .kw:empty { display: none; }
+  .kw .chip { display: inline-flex; align-items: center; gap: 2px; padding-right: 4px; }
+  .kw .chip .x { font-size: 15px; padding: 0 4px; }
   .loc { font: inherit; font-size: 12px; cursor: pointer; border: 1px dashed var(--line); background: transparent; color: var(--sub); border-radius: 8px; padding: 3px 9px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .loc.set { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
   dialog { border: none; border-radius: 16px; background: var(--card); color: var(--text); width: min(92vw, 420px); padding: 18px; }
@@ -125,6 +132,7 @@
     </div>
     <div class="tabs" id="tabs">
       <button class="tab" data-v="now" aria-pressed="true">진행 중</button>
+      <button class="tab" data-v="fav" aria-pressed="false" id="favtab">⭐ 즐겨찾기</button>
       <button class="tab" data-v="new" aria-pressed="false">이번 주 시작</button>
       <button class="tab" data-v="ending" aria-pressed="false">곧 종료 (3일 이내)</button>
       <button class="tab" data-v="soon" aria-pressed="false">시작 예정</button>
@@ -133,10 +141,12 @@
     <div class="chips" id="chips"></div>
   </div>
 
+  <div id="favtop" hidden></div>
   <div class="count" id="count"></div>
   <ul id="list"></ul>
   <button class="more" id="more" hidden>더 보기</button>
   <div class="empty" id="empty" hidden>조건에 맞는 상품이 없어요.</div>
+  <div id="favrest" hidden></div>
   <div id="map" hidden></div>
 
   <dialog id="locdlg">
@@ -156,7 +166,7 @@
   </dialog>
 
   <footer>
-    데이터: 코스트코 코리아 웹사이트의 ‘스페셜 할인’ 목록을 매일 자동으로 받아 정리합니다. 상품을 누르면 코스트코 상품 페이지로 이동해요. 📍 위치 메모는 이 기기의 브라우저에만 저장돼요.
+    데이터: 코스트코 코리아 웹사이트의 ‘스페셜 할인’ 목록을 매일 자동으로 받아 정리합니다. 상품을 누르면 코스트코 상품 페이지로 이동해요. ⭐ 즐겨찾기와 📍 위치 메모는 이 기기의 브라우저에만 저장돼요.
   </footer>
 </div>
 
@@ -177,20 +187,96 @@ const monday = addDays(today, -((dow + 6) % 7));
 
 // ── 📍 내 위치 메모 (이 기기의 localStorage에 저장) ──
 const MAP_KEY = 'gocheok-map';
-let mine = { items: {}, zones: [] };
+// items: 위치 메모, zones: 구역 메모, favs: ⭐ 즐겨찾기 상품, keys: ⭐ 키워드 즐겨찾기
+let mine = { items: {}, zones: [], favs: {}, keys: [] };
 let byCode = new Map();
 const natural = (a, b) => a.localeCompare(b, 'ko', { numeric: true });
 const locOf = code => (mine.items[code] && mine.items[code].loc) || '';
 function loadMine() {
   try {
     const m = JSON.parse(localStorage.getItem(MAP_KEY) || 'null');
-    if (m && typeof m === 'object') mine = { items: m.items && typeof m.items === 'object' ? m.items : {}, zones: Array.isArray(m.zones) ? m.zones : [] };
+    if (m && typeof m === 'object') mine = {
+      items: m.items && typeof m.items === 'object' ? m.items : {},
+      zones: Array.isArray(m.zones) ? m.zones : [],
+      favs: m.favs && typeof m.favs === 'object' ? m.favs : {},
+      keys: Array.isArray(m.keys) ? m.keys.filter(k => typeof k === 'string' && k) : [],
+    };
   } catch {}
 }
+
+// ── ⭐ 즐겨찾기 ──
+const isFav = code => !!mine.favs[code];
+// 키워드는 띄어쓰기로 나눈 단어가 모두 상품 이름에 들어 있으면 일치
+const kwHit = it => {
+  const s = `${it.name} ${it.en}`.toLowerCase();
+  return mine.keys.find(k => k.toLowerCase().split(/\s+/).filter(Boolean).every(w => s.includes(w))) || '';
+};
+const inFavs = it => isFav(it.code) || !!kwHit(it);
+const activeNow = it => it.start <= today && today <= it.end;
+function updateFavTab() {
+  const n = data ? data.items.filter(it => activeNow(it) && inFavs(it)).length : 0;
+  $('#favtab').textContent = n ? `⭐ 즐겨찾기 (${n})` : '⭐ 즐겨찾기';
+}
+function toggleFav(code) {
+  if (isFav(code)) delete mine.favs[code];
+  else { const it = byCode.get(code); mine.favs[code] = { name: it ? it.name : code, img: it ? it.img : '', url: it ? it.url : '', t: Date.now() }; }
+  saveMine();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-fav]'); if (!b) return;
+  e.preventDefault();
+  toggleFav(b.dataset.fav);
+  if (state.tab === 'fav') return render();
+  for (const x of document.querySelectorAll(`[data-fav="${CSS.escape(b.dataset.fav)}"]`)) favBtn(x, isFav(b.dataset.fav));
+});
+function favBtn(el, on) {
+  el.classList.toggle('on', on);
+  el.setAttribute('aria-pressed', on);
+  el.textContent = on ? '★ 즐겨찾기' : '☆ 즐겨찾기';
+}
+
+function renderFavTop() {
+  $('#favtop').innerHTML = `
+    <section class="mapsec">
+      <h2>⭐ 즐겨찾기</h2>
+      <p class="hint">상품 카드의 <b>☆ 즐겨찾기</b>를 누르거나, 자주 사는 물건 이름을 키워드로 넣어 두세요. 지금 할인 중인 것만 아래에 모여요.</p>
+      <form class="zoneform" id="kwform">
+        <input class="field" name="kw" maxlength="30" placeholder="키워드 (예: 키친타월, 커클랜드 견과)" autocomplete="off" required>
+        <button class="btn primary">추가</button>
+      </form>
+      <div class="kw">${mine.keys.map(k => `<span class="chip">${esc(k)}<button class="x" data-kdel="${esc(k)}" aria-label="${esc(k)} 삭제">×</button></span>`).join('')}</div>
+    </section>`;
+}
+function renderFavRest() {
+  const rest = Object.entries(mine.favs).filter(([code]) => { const it = byCode.get(code); return !it || it.end < today; });
+  $('#favrest').innerHTML = `
+    <section class="mapsec" style="margin-top:12px">
+      <h2>지금은 할인 안 함 <small class="hint">${rest.length}개</small></h2>
+      <p class="hint">${rest.length ? '즐겨찾기한 상품 중 이번 할인 목록에 없는 것이에요. 할인이 다시 시작되면 위 목록에 나타나요.' : '즐겨찾기한 상품이 모두 할인 중이거나, 아직 즐겨찾기가 없어요.'}</p>
+      <ul class="mini">${rest.sort((a, b) => natural(a[1].name, b[1].name)).map(([code, v]) => `<li>
+        ${v.url ? `<a class="nm" href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.name)}</a>` : `<span class="nm">${esc(v.name)}</span>`}
+        <button class="x" data-fav="${esc(code)}" aria-label="즐겨찾기 해제">×</button></li>`).join('')}</ul>
+      <p class="hint" style="margin-top:10px">즐겨찾기도 이 기기에만 저장돼요. 백업은 📍 내 지도 탭의 내보내기를 쓰세요.</p>
+    </section>`;
+}
+$('#favtop').addEventListener('submit', e => {
+  e.preventDefault();
+  const k = String(new FormData(e.target).get('kw')).trim().replace(/\s+/g, ' ').slice(0, 30);
+  if (!k) return;
+  if (!mine.keys.some(x => x.toLowerCase() === k.toLowerCase())) mine.keys.push(k);
+  saveMine(); reset();
+  $('#kwform input').focus();
+});
+$('#favtop').addEventListener('click', e => {
+  const b = e.target.closest('[data-kdel]'); if (!b) return;
+  mine.keys = mine.keys.filter(k => k !== b.dataset.kdel);
+  saveMine(); reset();
+});
 function saveMine() {
   try { localStorage.setItem(MAP_KEY, JSON.stringify(mine)); }
   catch { alert('이 브라우저에서는 메모를 저장할 수 없어요. 사생활 보호(시크릿) 모드인지 확인해 주세요.'); }
   updateMapTab();
+  updateFavTab();
 }
 function updateMapTab() {
   const n = Object.keys(mine.items).length;
@@ -307,8 +393,11 @@ $('#map').addEventListener('change', e => {
     for (const [code, v] of Object.entries(m.items)) if (v && typeof v.loc === 'string' && v.loc) { mine.items[code] = { loc: v.loc.slice(0, 40), name: String(v.name || code), t: v.t || Date.now() }; n++; }
     for (const z of m.zones) if (z && z.name && z.loc) mine.zones = mine.zones.filter(x => x.name !== z.name).concat({ name: String(z.name), loc: String(z.loc) });
     mine.zones.sort((a, b) => natural(a.name, b.name));
+    let f = 0;
+    if (m.favs && typeof m.favs === 'object') for (const [code, v] of Object.entries(m.favs)) if (v) { mine.favs[code] = { name: String(v.name || code), img: String(v.img || ''), url: String(v.url || ''), t: v.t || Date.now() }; f++; }
+    if (Array.isArray(m.keys)) for (const k of m.keys) if (typeof k === 'string' && k && !mine.keys.some(x => x.toLowerCase() === k.toLowerCase())) mine.keys.push(k.slice(0, 30));
     saveMine(); renderMap();
-    alert(`상품 위치 ${n}개, 구역 ${m.zones.length}개를 가져왔어요.`);
+    alert(`상품 위치 ${n}개, 구역 ${m.zones.length}개, 즐겨찾기 ${f}개, 키워드 ${Array.isArray(m.keys) ? m.keys.length : 0}개를 가져왔어요.`);
   }).catch(() => alert('가져올 수 없는 파일이에요. 이 페이지에서 내보낸 파일인지 확인해 주세요.'));
 });
 
@@ -330,6 +419,7 @@ function init() {
   for (const it of data.items) cats[it.cat] = (cats[it.cat] || 0) + 1;
   const names = Object.keys(cats).sort((a, b) => (a === '기타') - (b === '기타') || cats[b] - cats[a]);
   $('#chips').innerHTML = ['전체', ...names].map(c => `<button class="chip" data-v="${esc(c)}" aria-pressed="${c === state.cat}">${esc(c)}</button>`).join('');
+  updateFavTab();
   render();
 }
 
@@ -353,6 +443,7 @@ function filtered() {
     if (state.tab === 'new' && !(active && it.start >= monday)) return false;
     if (state.tab === 'ending' && !(active && it.end <= end3)) return false;
     if (state.tab === 'soon' && !(it.start > today)) return false;
+    if (state.tab === 'fav' && !(it.end >= today && inFavs(it))) return false;
     if (state.cat !== '전체' && it.cat !== state.cat) return false;
     if (q && !(`${it.name} ${it.en} ${locOf(it.code)}`.toLowerCase().includes(q))) return false;
     return true;
@@ -374,6 +465,8 @@ function card(it) {
   else if (it.start >= monday) badges.push('<span class="badge b-new">이번 주 시작</span>');
   if (active && it.end <= addDays(today, 3)) badges.push(`<span class="badge b-end">${it.end === today ? '오늘 종료' : '곧 종료'}</span>`);
   const loc = locOf(it.code);
+  const fav = isFav(it.code), kw = fav ? '' : kwHit(it);
+  if (kw) badges.unshift(`<span class="badge b-soon">⭐ ${esc(kw)}</span>`);
   return `<li class="item"><a href="${esc(it.url)}" target="_blank" rel="noopener">
     <img class="thumb" src="${esc(it.img)}" alt="" loading="lazy" decoding="async">
     <div class="info">
@@ -382,15 +475,18 @@ function card(it) {
       <div class="off">-${won(it.off)} (${it.pct}%)</div>
       <div class="meta">${badges.join('')}<span>${md(it.start)} ~ ${md(it.end)}</span><span>· ${esc(it.cat)}</span></div>
     </div></a>
-    <div class="locrow"><button class="loc${loc ? ' set' : ''}" data-code="${esc(it.code)}">📍 ${loc ? esc(loc) : '위치 메모'}</button></div></li>`;
+    <div class="locrow"><button class="fav${fav ? ' on' : ''}" data-fav="${esc(it.code)}" aria-pressed="${fav}">${fav ? '★' : '☆'} 즐겨찾기</button><button class="loc${loc ? ' set' : ''}" data-code="${esc(it.code)}">📍 ${loc ? esc(loc) : '위치 메모'}</button></div></li>`;
 }
 
 function render() {
   if (!data) return;
-  const isMap = state.tab === 'map';
+  const isMap = state.tab === 'map', isFavTab = state.tab === 'fav';
   for (const s of ['#chips', '#count', '#list', '#sort']) $(s).hidden = isMap;
   $('#map').hidden = !isMap;
+  $('#favtop').hidden = $('#favrest').hidden = !isFavTab;
   if (isMap) { $('#more').hidden = $('#empty').hidden = true; renderMap(); return; }
+  if (isFavTab) { renderFavTop(); renderFavRest(); }
+  $('#empty').textContent = isFavTab ? '즐겨찾기한 상품 중 지금 할인 중인 게 없어요.' : '조건에 맞는 상품이 없어요.';
   const list = filtered();
   $('#count').textContent = `${list.length.toLocaleString()}개 상품`;
   $('#list').innerHTML = list.slice(0, state.shown).map(card).join('');
